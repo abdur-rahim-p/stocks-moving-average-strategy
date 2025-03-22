@@ -1,0 +1,94 @@
+//@version=5
+strategy("Moving Average Crossover Strategy with Configurable Stop Losses and Take Profit", overlay=true)
+
+// Define the input parameters
+fastLength = input.int(9, title="Fast MA Length")
+slowLength = input.int(21, title="Slow MA Length")
+useFixedStopLoss = input.bool(true, title="Use Fixed Stop Loss")
+fixedStopLossPercent = input.float(1.0, title="Fixed Stop Loss Percentage", step=0.1) / 100
+useTrailingStopLoss = input.bool(true, title="Use Trailing Stop Loss")
+trailingStopLossPercent = input.float(1.0, title="Trailing Stop Loss Percentage", step=0.1) / 100
+useATRStopLoss = input.bool(true, title="Use ATR Stop Loss")
+atrLength = input.int(14, title="ATR Length")
+atrMultiplier = input.float(1.5, title="ATR Multiplier")
+useSupportStopLoss = input.bool(true, title="Use Support Level Stop Loss")
+supportLength = input.int(20, title="Support Level Length")
+useTakeProfit = input.bool(true, title="Use Take Profit")
+takeProfitPercent = input.float(2.0, title="Take Profit Percentage", step=0.1) / 100
+
+// Calculate the moving averages
+fastMA = ta.sma(close, fastLength)
+slowMA = ta.sma(close, slowLength)
+
+// Plot the moving averages
+plot(fastMA, title="Fast MA", color=color.blue, linewidth=2)
+plot(slowMA, title="Slow MA", color=color.red, linewidth=2)
+
+// Calculate the ATR
+atrValue = ta.atr(atrLength)
+
+// Generate buy and sell signals
+buySignal = ta.crossover(fastMA, slowMA)
+sellSignal = ta.crossunder(fastMA, slowMA)
+
+// Plot buy and sell signals on the chart
+plotshape(series=buySignal, location=location.belowbar, color=color.green, style=shape.labelup, text="BUY")
+plotshape(series=sellSignal, location=location.abovebar, color=color.red, style=shape.labeldown, text="SELL")
+
+// Declare variables for stop loss and take profit levels
+var float fixedStopLossLevel = na
+var float trailingStopLossLevel = na
+var float atrStopLossLevel = na
+var float supportStopLossLevel = na
+var float takeProfitLevel = na
+
+// Calculate stop loss and take profit levels
+if (buySignal)
+    if (useFixedStopLoss)
+        fixedStopLossLevel := close * (1 - fixedStopLossPercent)
+    if (useTrailingStopLoss)
+        trailingStopLossLevel := close * (1 - trailingStopLossPercent)
+    if (useATRStopLoss)
+        atrStopLossLevel := close - atrValue * atrMultiplier
+    if (useSupportStopLoss)
+        supportStopLossLevel := ta.lowest(low, supportLength)
+    if (useTakeProfit)
+        takeProfitLevel := close * (1 + takeProfitPercent)
+
+// Update trailing stop loss level
+if (useTrailingStopLoss and strategy.position_size > 0)
+    trailingStopLossLevel := math.max(trailingStopLossLevel, close * (1 - trailingStopLossPercent))
+
+// Plot stop loss and take profit levels
+plot(useFixedStopLoss and not na(fixedStopLossLevel) ? fixedStopLossLevel : na, title="Fixed Stop Loss", color=color.orange, linewidth=2, style=plot.style_linebr)
+plot(useTrailingStopLoss and not na(trailingStopLossLevel) ? trailingStopLossLevel : na, title="Trailing Stop Loss", color=color.purple, linewidth=2, style=plot.style_linebr)
+plot(useATRStopLoss and not na(atrStopLossLevel) ? atrStopLossLevel : na, title="ATR Stop Loss", color=color.yellow, linewidth=2, style=plot.style_linebr)
+plot(useSupportStopLoss and not na(supportStopLossLevel) ? supportStopLossLevel : na, title="Support Stop Loss", color=color.teal, linewidth=2, style=plot.style_linebr)
+plot(useTakeProfit and not na(takeProfitLevel) ? takeProfitLevel : na, title="Take Profit", color=color.fuchsia, linewidth=2, style=plot.style_linebr)
+
+// Execute buy and sell orders
+if (buySignal)
+    strategy.entry("Buy", strategy.long)
+
+if (sellSignal)
+    strategy.close("Buy")
+
+// Implement fixed stop loss
+if (useFixedStopLoss and strategy.position_size > 0 and close < fixedStopLossLevel)
+    strategy.close("Buy", comment="Fixed Stop Loss")
+
+// Implement trailing stop loss
+if (useTrailingStopLoss and strategy.position_size > 0 and close < trailingStopLossLevel)
+    strategy.close("Buy", comment="Trailing Stop Loss")
+
+// Implement ATR stop loss
+if (useATRStopLoss and strategy.position_size > 0 and close < atrStopLossLevel)
+    strategy.close("Buy", comment="ATR Stop Loss")
+
+// Implement support level stop loss
+if (useSupportStopLoss and strategy.position_size > 0 and close < supportStopLossLevel)
+    strategy.close("Buy", comment="Support Stop Loss")
+
+// Implement take profit
+if (useTakeProfit and strategy.position_size > 0 and close > takeProfitLevel)
+    strategy.close("Buy", comment="Take Profit")
