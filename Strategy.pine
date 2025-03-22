@@ -2,8 +2,8 @@
 strategy("Moving Average Crossover Strategy with Configurable Stop Losses and Take Profit", overlay=true)
 
 // Define the input parameters
-fastLength = input.int(9, title="Fast MA Length")
-slowLength = input.int(21, title="Slow MA Length")
+fastLength = input.int(50, title="Fast MA Length")
+slowLength = input.int(200, title="Slow MA Length")
 useFixedStopLoss = input.bool(true, title="Use Fixed Stop Loss")
 fixedStopLossPercent = input.float(1.0, title="Fixed Stop Loss Percentage", step=0.1) / 100
 useTrailingStopLoss = input.bool(true, title="Use Trailing Stop Loss")
